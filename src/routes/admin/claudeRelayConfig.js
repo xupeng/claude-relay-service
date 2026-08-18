@@ -52,6 +52,7 @@ router.put('/claude-relay-config', authenticateAdmin, async (req, res) => {
       requestDetailCaptureEnabled,
       requestDetailRetentionHours,
       requestDetailBodyPreviewEnabled,
+      openaiReasoningEffortMappingEnabled,
       purgeRequestDetailBodySnapshots
     } = req.body
 
@@ -195,6 +196,15 @@ router.put('/claude-relay-config', authenticateAdmin, async (req, res) => {
     }
 
     if (
+      openaiReasoningEffortMappingEnabled !== undefined &&
+      typeof openaiReasoningEffortMappingEnabled !== 'boolean'
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'openaiReasoningEffortMappingEnabled must be a boolean' })
+    }
+
+    if (
       purgeRequestDetailBodySnapshots !== undefined &&
       typeof purgeRequestDetailBodySnapshots !== 'boolean'
     ) {
@@ -243,6 +253,9 @@ router.put('/claude-relay-config', authenticateAdmin, async (req, res) => {
     }
     if (requestDetailBodyPreviewEnabled !== undefined) {
       updateData.requestDetailBodyPreviewEnabled = requestDetailBodyPreviewEnabled
+    }
+    if (openaiReasoningEffortMappingEnabled !== undefined) {
+      updateData.openaiReasoningEffortMappingEnabled = openaiReasoningEffortMappingEnabled
     }
 
     const updatedConfig = await claudeRelayConfigService.updateConfig(

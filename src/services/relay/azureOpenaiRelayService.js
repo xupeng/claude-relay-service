@@ -3,6 +3,8 @@ const ProxyHelper = require('../../utils/proxyHelper')
 const logger = require('../../utils/logger')
 const config = require('../../../config/config')
 const upstreamErrorHelper = require('../../utils/upstreamErrorHelper')
+const claudeRelayConfigService = require('../claudeRelayConfigService')
+const { normalizeOpenAIReasoningEffort } = require('../../utils/openaiReasoning')
 
 // 转换模型名称（去掉 azure/ 前缀）
 function normalizeModelName(model) {
@@ -52,7 +54,10 @@ async function handleAzureOpenAIRequest({
     delete requestHeaders['host']
 
     // 处理请求体
-    const processedBody = { ...requestBody }
+    let processedBody = { ...requestBody }
+    if (await claudeRelayConfigService.isOpenAIReasoningEffortMappingEnabled()) {
+      processedBody = normalizeOpenAIReasoningEffort(processedBody)
+    }
 
     // 标准化模型名称
     if (endpoint === 'responses') {

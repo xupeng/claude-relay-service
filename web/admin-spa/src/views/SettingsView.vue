@@ -792,6 +792,58 @@
               </div>
             </div>
 
+            <!-- OpenAI 推理强度兼容映射 -->
+            <div
+              class="mb-6 rounded-lg bg-white/80 p-6 shadow-lg backdrop-blur-sm dark:bg-gray-800/80"
+            >
+              <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center">
+                  <div
+                    class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg"
+                  >
+                    <i class="fas fa-arrow-down-wide-short text-xl"></i>
+                  </div>
+                  <div class="ml-4">
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white">
+                      OpenAI 推理强度兼容映射
+                    </h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      启用后，将 GPT 请求中的
+                      <code class="rounded bg-gray-100 px-1 dark:bg-gray-700">max</code>
+                      和
+                      <code class="rounded bg-gray-100 px-1 dark:bg-gray-700">ultra</code>
+                      静默映射为
+                      <code class="rounded bg-gray-100 px-1 dark:bg-gray-700">xhigh</code>
+                      后再转发上游
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex flex-shrink-0 cursor-pointer items-center">
+                  <input
+                    v-model="claudeConfig.openaiReasoningEffortMappingEnabled"
+                    class="peer sr-only"
+                    type="checkbox"
+                    @change="saveClaudeConfig"
+                  />
+                  <div
+                    class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-emerald-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-emerald-800"
+                  ></div>
+                </label>
+              </div>
+              <div class="mt-4 rounded-lg bg-emerald-50 p-4 dark:bg-emerald-900/20">
+                <p class="text-sm text-emerald-700 dark:text-emerald-300">
+                  关闭后不再修改
+                  <code class="rounded bg-emerald-100 px-1 dark:bg-emerald-800"
+                    >reasoning.effort</code
+                  >
+                  和
+                  <code class="rounded bg-emerald-100 px-1 dark:bg-emerald-800"
+                    >reasoning_effort</code
+                  >，请求值将原样发送给上游。
+                </p>
+              </div>
+            </div>
+
             <!-- 全局会话绑定 -->
             <div
               class="mb-6 rounded-lg bg-white/80 p-6 shadow-lg backdrop-blur-sm dark:bg-gray-800/80"
@@ -2096,6 +2148,7 @@ const claudeConfig = ref({
   requestDetailCaptureEnabled: false,
   requestDetailRetentionHours: 6,
   requestDetailBodyPreviewEnabled: false,
+  openaiReasoningEffortMappingEnabled: true,
   updatedAt: null,
   updatedBy: null
 })
@@ -2498,6 +2551,8 @@ const loadClaudeConfig = async () => {
         requestDetailRetentionHours:
           response.config?.requestDetailRetentionHours ?? REQUEST_DETAIL_RETENTION_DEFAULT_HOURS,
         requestDetailBodyPreviewEnabled: response.config?.requestDetailBodyPreviewEnabled ?? false,
+        openaiReasoningEffortMappingEnabled:
+          response.config?.openaiReasoningEffortMappingEnabled ?? true,
         updatedAt: response.config?.updatedAt || null,
         updatedBy: response.config?.updatedBy || null
       }
@@ -2541,7 +2596,8 @@ const saveClaudeConfig = async (options = {}) => {
       concurrentRequestQueueTimeoutMs: claudeConfig.value.concurrentRequestQueueTimeoutMs,
       requestDetailCaptureEnabled: claudeConfig.value.requestDetailCaptureEnabled,
       requestDetailRetentionHours: claudeConfig.value.requestDetailRetentionHours,
-      requestDetailBodyPreviewEnabled
+      requestDetailBodyPreviewEnabled,
+      openaiReasoningEffortMappingEnabled: claudeConfig.value.openaiReasoningEffortMappingEnabled
     }
 
     if (options.purgeRequestDetailBodySnapshots === true) {
@@ -2560,6 +2616,9 @@ const saveClaudeConfig = async (options = {}) => {
         requestDetailBodyPreviewEnabled:
           response.config?.requestDetailBodyPreviewEnabled ??
           claudeConfig.value.requestDetailBodyPreviewEnabled,
+        openaiReasoningEffortMappingEnabled:
+          response.config?.openaiReasoningEffortMappingEnabled ??
+          claudeConfig.value.openaiReasoningEffortMappingEnabled,
         updatedAt: response.config?.updatedAt || new Date().toISOString(),
         updatedBy: response.config?.updatedBy || null
       }

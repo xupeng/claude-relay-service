@@ -30,6 +30,7 @@ const DEFAULT_CONFIG = {
   requestDetailCaptureEnabled: false, // 是否启用请求明细采集
   requestDetailRetentionHours: 6, // 请求明细保留时间（小时）
   requestDetailBodyPreviewEnabled: false, // 是否保存请求体预览快照
+  openaiReasoningEffortMappingEnabled: true, // 是否将 OpenAI max/ultra 推理强度映射为 xhigh
   // 排队健康检查配置
   concurrentRequestQueueHealthCheckEnabled: true, // 是否启用排队健康检查（默认开启）
   concurrentRequestQueueHealthThreshold: 0.8, // 健康检查阈值（P90 >= 超时 × 阈值时拒绝新请求）
@@ -115,7 +116,8 @@ class ClaudeRelayConfigService {
       logger.info(`✅ Claude relay config updated by ${updatedBy}:`, {
         claudeCodeOnlyEnabled: updatedConfig.claudeCodeOnlyEnabled,
         globalSessionBindingEnabled: updatedConfig.globalSessionBindingEnabled,
-        concurrentRequestQueueEnabled: updatedConfig.concurrentRequestQueueEnabled
+        concurrentRequestQueueEnabled: updatedConfig.concurrentRequestQueueEnabled,
+        openaiReasoningEffortMappingEnabled: updatedConfig.openaiReasoningEffortMappingEnabled
       })
 
       return updatedConfig
@@ -141,6 +143,15 @@ class ClaudeRelayConfigService {
   async isGlobalSessionBindingEnabled() {
     const cfg = await this.getConfig()
     return cfg.globalSessionBindingEnabled === true
+  }
+
+  /**
+   * 检查是否启用 OpenAI 推理强度兼容映射
+   * @returns {Promise<boolean>}
+   */
+  async isOpenAIReasoningEffortMappingEnabled() {
+    const cfg = await this.getConfig()
+    return cfg.openaiReasoningEffortMappingEnabled !== false
   }
 
   /**

@@ -5,8 +5,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment files
+.env
 .env.local
 .env.*.local
+
+# Runtime-generated configuration
+config/config.js
 
 # Logs
 logs/

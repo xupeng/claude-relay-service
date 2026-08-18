@@ -20,6 +20,8 @@ const {
   extractOpenAICacheReadTokens
 } = require('../utils/requestDetailHelper')
 const requestBodyRuleService = require('../services/requestBodyRuleService')
+const claudeRelayConfigService = require('../services/claudeRelayConfigService')
+const { normalizeOpenAIReasoningEffort } = require('../utils/openaiReasoning')
 
 // Codex CLI 系统提示词（非 Codex CLI 客户端请求时注入，统一端点也使用）
 const CODEX_CLI_INSTRUCTIONS =
@@ -357,6 +359,10 @@ const handleResponses = async (req, res) => {
       } else {
         logger.info('✅ Codex CLI request detected, forwarding as-is')
       }
+    }
+
+    if (await claudeRelayConfigService.isOpenAIReasoningEffortMappingEnabled()) {
+      req.body = normalizeOpenAIReasoningEffort(req.body)
     }
 
     // 从最终请求体中提取 service_tier，用于后续费用计算

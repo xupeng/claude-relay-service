@@ -53,6 +53,10 @@ jest.mock('../src/services/relay/openaiResponsesRelayService', () => ({
   handleRequest: jest.fn()
 }))
 
+jest.mock('../src/services/claudeRelayConfigService', () => ({
+  isOpenAIReasoningEffortMappingEnabled: jest.fn().mockResolvedValue(true)
+}))
+
 jest.mock('../src/services/apiKeyService', () => ({
   hasPermission: jest.fn(() => true),
   recordUsage: jest.fn()
@@ -102,6 +106,7 @@ const apiKeyService = require('../src/services/apiKeyService')
 const openaiAccountService = require('../src/services/account/openaiAccountService')
 const openaiResponsesAccountService = require('../src/services/account/openaiResponsesAccountService')
 const openaiResponsesRelayService = require('../src/services/relay/openaiResponsesRelayService')
+const claudeRelayConfigService = require('../src/services/claudeRelayConfigService')
 const openaiRoutes = require('../src/routes/openaiRoutes')
 
 function createHash(value) {
@@ -177,6 +182,7 @@ describe('openai responses payload toggles', () => {
     })
 
     openaiResponsesRelayService.handleRequest.mockResolvedValue({ ok: true })
+    claudeRelayConfigService.isOpenAIReasoningEffortMappingEnabled.mockResolvedValue(true)
     openaiAccountService.decrypt.mockReturnValue('decrypted-token')
   })
 
@@ -207,6 +213,89 @@ describe('openai responses payload toggles', () => {
       createHash('session-a'),
       'gpt-5'
     )
+  })
+
+  test.each(['max', 'ultra'])(
+    'silently maps %s reasoning effort to xhigh before relaying',
+    async (effort) => {
+      const req = createReq({
+        body: {
+          model: 'gpt-5.6-sol',
+          reasoning: { effort },
+          reasoning_effort: effort
+        },
+        apiKeyOverrides: {
+          enableOpenAIResponsesCodexAdaptation: false,
+          enableOpenAIResponsesPayloadRules: false
+        }
+      })
+
+      await openaiRoutes.handleResponses(req, createRes())
+
+      expect(req.body.reasoning.effort).toBe('xhigh')
+      expect(req.body.reasoning_effort).toBe('xhigh')
+      expect(openaiResponsesRelayService.handleRequest).toHaveBeenCalled()
+    }
+  )
+
+  test('preserves unmapped reasoning efforts when compatibility mapping is enabled', async () => {
+    const req = createReq({
+      body: {
+        model: 'gpt-5.6-sol',
+        reasoning: { effort: 'xhigh' },
+        reasoning_effort: 'high'
+      },
+      apiKeyOverrides: {
+        enableOpenAIResponsesCodexAdaptation: false,
+        enableOpenAIResponsesPayloadRules: false
+      }
+    })
+
+    await openaiRoutes.handleResponses(req, createRes())
+
+    expect(req.body.reasoning.effort).toBe('xhigh')
+    expect(req.body.reasoning_effort).toBe('high')
+  })
+
+  test('preserves reasoning effort when compatibility mapping is disabled', async () => {
+    claudeRelayConfigService.isOpenAIReasoningEffortMappingEnabled.mockResolvedValue(false)
+
+    const req = createReq({
+      body: {
+        model: 'gpt-5.6-sol',
+        reasoning: { effort: 'max' },
+        reasoning_effort: 'xhigh'
+      },
+      apiKeyOverrides: {
+        enableOpenAIResponsesCodexAdaptation: false,
+        enableOpenAIResponsesPayloadRules: false
+      }
+    })
+
+    await openaiRoutes.handleResponses(req, createRes())
+
+    expect(req.body.reasoning.effort).toBe('max')
+    expect(req.body.reasoning_effort).toBe('xhigh')
+  })
+
+  test('normalizes reasoning effort after applying payload rules', async () => {
+    const req = createReq({
+      body: {
+        model: 'gpt-5.6-sol',
+        reasoning: { effort: 'medium' }
+      },
+      apiKeyOverrides: {
+        enableOpenAIResponsesCodexAdaptation: false,
+        enableOpenAIResponsesPayloadRules: true,
+        openaiResponsesPayloadRules: [
+          { path: 'reasoning.effort', valueType: 'string', value: 'ultra' }
+        ]
+      }
+    })
+
+    await openaiRoutes.handleResponses(req, createRes())
+
+    expect(req.body.reasoning.effort).toBe('xhigh')
   })
 
   test('applies Codex adaptation only when adaptation toggle is on', async () => {

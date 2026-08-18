@@ -10,6 +10,8 @@ const logger = require('../../utils/logger')
 const runtimeAddon = require('../../utils/runtimeAddon')
 const upstreamErrorHelper = require('../../utils/upstreamErrorHelper')
 const { createRequestDetailMeta } = require('../../utils/requestDetailHelper')
+const claudeRelayConfigService = require('../claudeRelayConfigService')
+const { normalizeOpenAIReasoningEffort } = require('../../utils/openaiReasoning')
 
 const SYSTEM_PROMPT = 'You are Droid, an AI software engineering agent built by Factory.'
 const RUNTIME_EVENT_FMT_PAYLOAD = 'fmtPayload'
@@ -54,7 +56,7 @@ class DroidRelayService {
     return 'anthropic'
   }
 
-  _normalizeRequestBody(requestBody, endpointType) {
+  _normalizeRequestBody(requestBody, endpointType, reasoningEffortMappingEnabled = true) {
     if (!requestBody || typeof requestBody !== 'object') {
       return requestBody
     }
@@ -87,6 +89,10 @@ class DroidRelayService {
         }
         normalizedBody.model = mappedModel
       }
+    }
+
+    if (reasoningEffortMappingEnabled && (endpointType === 'openai' || endpointType === 'comm')) {
+      return normalizeOpenAIReasoningEffort(normalizedBody)
     }
 
     return normalizedBody
@@ -199,7 +205,14 @@ class DroidRelayService {
     const keyInfo = apiKeyData || {}
     const clientApiKeyId = keyInfo.id || null
     const normalizedEndpoint = this._normalizeEndpointType(endpointType)
-    const normalizedRequestBody = this._normalizeRequestBody(requestBody, normalizedEndpoint)
+    const reasoningEffortMappingEnabled =
+      (normalizedEndpoint === 'openai' || normalizedEndpoint === 'comm') &&
+      (await claudeRelayConfigService.isOpenAIReasoningEffortMappingEnabled())
+    const normalizedRequestBody = this._normalizeRequestBody(
+      requestBody,
+      normalizedEndpoint,
+      reasoningEffortMappingEnabled
+    )
     let account = null
     let selectedApiKey = null
     let accessToken = null
